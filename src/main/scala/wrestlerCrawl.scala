@@ -1,6 +1,7 @@
 object wrestlerCrawl{
   import scala.io.Source
   import util.control.Breaks._
+  import scala.collection.mutable.ListBuffer
 
   /*
   Retourne une String correspondant au contenu d'une page web dont l'url est passee en parametre
@@ -14,19 +15,38 @@ object wrestlerCrawl{
   Retourne une liste contenant les titres des pages appartenant a une categorie Wikipedia passee en parametre
   (utilise l'API wiki pour recuperer la liste de ces pages au format xml, qui est ensuite splittee)
    */
-  def getPagesFromCategory(category:String): List[String] ={
+  def getPagesInCategory(category:String): ListBuffer[String] ={
     val xmlWikiCat = urlToString("https://en.wikipedia.org/w/api.php?action=query&format=xml&list=categorymembers&cmtitle=" + makeWikiLike(category) + "&cmlimit=max")
     val xmlLines = xmlWikiCat.split(">")
-    var pages:List[String] = List()
+    var pageTitles:ListBuffer[String] = new ListBuffer[String]()
     for (i <-0 until xmlLines.length) {
       val myLine = xmlLines(i).trim()
       if (myLine.startsWith("<cm pageid=")){
         var splitLine = myLine.split("\"")
-        pages = pages :+ splitLine(5) //champ correspondant au titre de la page
+        val pageTitle = splitLine(5) //champ correspondant au titre de la page
+        pageTitles += pageTitle
       }
     }
-    return pages
+    return pageTitles
   }
+
+  def getWrestlersInCategory(category:String): ListBuffer[String] ={
+    val xmlWikiCat = urlToString("https://en.wikipedia.org/w/api.php?action=query&format=xml&list=categorymembers&cmtitle=" + makeWikiLike(category) + "&cmlimit=max")
+    val xmlLines = xmlWikiCat.split(">")
+    var pageTitles:ListBuffer[String] = new ListBuffer[String]()
+    for (i <-0 until xmlLines.length) {
+      val myLine = xmlLines(i).trim()
+      if (myLine.startsWith("<cm pageid=")){
+        var splitLine = myLine.split("\"")
+        val pageTitle = splitLine(5) //champ correspondant au titre de la page
+        if (pageTitle.startsWith("Category:")) pageTitles ++= getWrestlersInCategory(pageTitle)
+        else pageTitles += pageTitle
+      }
+    }
+    return pageTitles
+  }
+
+//  def makeWrestlersFrom
 
   /*
 Renvoie une String correspondant à la nationalité dans une chaîne de type "Category:New Zealand female professional wrestlers"/"Category:New Zealand male professional wrestlers"
@@ -114,22 +134,18 @@ Renvoie une String correspondant à la nationalité dans une chaîne de type "Ca
   def populateDB(gender:String, wrestlerCategory:String): Map[String,Country] ={
     println("Populating wrestler database from wikipedia...")
     var countries:Map[String,Country] = Map()
-    var femaleWrestlerNationalities = getPagesFromCategory(wrestlerCategory) //Recupere toutes les sous-categories d'une categorie wikipedia (ici Female professional wrestlers by nationality)
+    var femaleWrestlerNationalities = getPagesInCategory(wrestlerCategory) //Recupere toutes les sous-categories d'une categorie wikipedia (ici Female professional wrestlers by nationality)
     for (i <-0 until femaleWrestlerNationalities.length) {
       val category = femaleWrestlerNationalities(i) //isole le nom de categorie (exemple "Category:American female professional wrestlers"
       val nationality = getNationalityFromCategory(category, gender) //recupere le nom de la nationalite (exemple "American" pour "Category:American female professional wrestlers"
       var tmpCountry = new Country(nationality)
       //      println(nationality+" wrestlers:") //Affichage pour debuggage, a retirer quand interface faite
-      var wrestlerNames = getPagesFromCategory(category)
+      var wrestlerNames = getWrestlersInCategory(category)
       for (j <-0 until wrestlerNames.length) {
         val wrestlerName = wrestlerNames(j)
-        if (!wrestlerName.startsWith("Category:")){
           var tmpWrestler = makeWrestler(wrestlerName, gender)
           tmpWrestler.country = tmpCountry
-          //          wrestlers = wrestlers :+ tmpWrestler
           tmpCountry.wrestlers = tmpCountry.wrestlers :+ tmpWrestler
-          //          println("- "+tmpWrestler) //Affichage pour debuggage, a retirer quand interface faite
-        }
       }
       countries = countries + (nationality.toLowerCase -> tmpCountry)
     }
