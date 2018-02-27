@@ -137,6 +137,20 @@ Renvoie une String correspondant à la nationalité dans une chaîne de type "Ca
     return countries
   }
 
+  def interactWithUser(countryMap: Map[String,Country]){
+    var input = ""
+    while (input != "exit") {
+      println("Type wrestler nationality (or \"list\" to get available nationalities, or \"exit\" to exit program):")
+      input = scala.io.StdIn.readLine().toLowerCase
+      if (input == "exit") return
+      if (input == "list") {
+        println(countryMap.keys.mkString("; "))
+      }
+      else if (countryMap.contains(input)) println(countryMap(input))
+      else println("No wrestler from this country was found in the database")
+    }
+  }
+
   /*
    - on cree un objet Country pour chaque nationalite presente dans la categorie wiki Category:Female professional wrestlers by nationality (https://en.wikipedia.org/wiki/Category:Female_professional_wrestlers_by_nationality)
    - on cree un objet Wrestler par catcheuse presente dans chacune des categories de pays, par exemple chaque catcheuse de la categorie Category:American female professional wrestlers (https://en.wikipedia.org/wiki/Category:American_female_professional_wrestlers)
@@ -157,19 +171,7 @@ Renvoie une String correspondant à la nationalité dans une chaîne de type "Ca
     val gender = "female"
     val categoryName = "Category:Female professional wrestlers by nationality"
     var countryMap = populateDB(gender, categoryName)
-    var input = ""
-    breakable {
-      while (input != "exit") {
-        println("Type wrestler nationality (or \"list\" to get available nationalities, or \"exit\" to exit program):")
-        input = scala.io.StdIn.readLine().toLowerCase
-        if (input == "exit") break
-        if (input == "list") {
-          println(countryMap.keys.mkString("; "))
-        }
-        else if (countryMap.contains(input)) println(countryMap(input))
-        else println("No wrestler from this country was found in the database")
-      }
-    }
+    interactWithUser(countryMap)
   }
   //TEST
   //println(getNationalityFromCategory("Category:New Zealand female professional wrestlers", gender))
